@@ -1,0 +1,147 @@
+﻿version: '3.8'
+services:
+  auth-service:
+    image: node:18-alpine
+    container_name: rsv-auth-service
+    ports:
+      - "5006:5006"
+    environment:
+      - NODE_ENV=development
+      - PORT=5006
+      - SERVICE_NAME=RSV360-Auth-Service
+      - JWT_SECRET=rsv360-jwt-secret-key-2025
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const jwt = require(\"jsonwebtoken\");
+        const bcrypt = require(\"bcrypt\");
+        const app = express();
+        const port = 5006;
+        const JWT_SECRET = process.env.JWT_SECRET || \"rsv360-jwt-secret-key-2025\";
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        // Mock users database
+        const users = [
+          { id: 1, username: \"admin\", password: \"\\\\", email: \"admin@rsv360.com\", role: \"admin\" },
+          { id: 2, username: \"user\", password: \"\\\\", email: \"user@rsv360.com\", role: \"user\" }
+        ];
+        
+        // Health check
+        app.get(\"/health\", (req, res) => {
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 Auth Service\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime()
+          });
+        });
+        
+        // Auth service status
+        app.get(\"/api/v1/status\", (req, res) => {
+          res.json({
+            success: true,
+            message: \"RSV360 Auth Service is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString(),
+            endpoints: [
+              \"POST /api/v1/auth/login\",
+              \"POST /api/v1/auth/register\",
+              \"GET /api/v1/auth/verify\",
+              \"POST /api/v1/auth/refresh\"
+            ]
+          });
+        });
+        
+        // Login endpoint
+        app.post(\"/api/v1/auth/login\", async (req, res) => {
+          try {
+            const { username, password } = req.body;
+            
+            if (!username || !password) {
+              return res.status(400).json({
+                success: false,
+                message: \"Username and password are required\"
+              });
+            }
+            
+            const user = users.find(u => u.username === username);
+            if (!user) {
+              return res.status(401).json({
+                success: false,
+                message: \"Invalid credentials\"
+              });
+            }
+            
+            // In real app, verify password with bcrypt
+            const isValidPassword = password === \"password123\";
+            if (!isValidPassword) {
+              return res.status(401).json({
+                success: false,
+                message: \"Invalid credentials\"
+              });
+            }
+            
+            const token = jwt.sign(
+              { userId: user.id, username: user.username, role: user.role },
+              JWT_SECRET,
+              { expiresIn: \"1h\" }
+            );
+            
+            res.json({
+              success: true,
+              message: \"Login successful\",
+              data: {
+                token,
+                user: {
+                  id: user.id,
+                  username: user.username,
+                  email: user.email,
+                  role: user.role
+                }
+              }
+            });
+          } catch (error) {
+            res.status(500).json({
+              success: false,
+              message: \"Internal server error\"
+            });
+          }
+        });
+        
+        // Verify token endpoint
+        app.get(\"/api/v1/auth/verify\", (req, res) => {
+          try {
+            const token = req.headers.authorization?.replace(\"Bearer \", \"\");
+            
+            if (!token) {
+              return res.status(401).json({
+                success: false,
+                message: \"Token is required\"
+              });
+            }
+            
+            const decoded = jwt.verify(token, JWT_SECRET);
+            res.json({
+              success: true,
+              message: \"Token is valid\",
+              data: decoded
+            });
+          } catch (error) {
+            res.status(401).json({
+              success: false,
+              message: \"Invalid token\"
+            });
+          }
+        });
+        
+        app.listen(port, () => console.log(\"RSV360 Auth Service running on port \" + port));
+        ' > server.js &&
+        npm init -y && npm install express cors jsonwebtoken bcrypt && node server.js
+      "
+    restart: unless-stopped

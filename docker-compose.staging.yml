@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # API Gateway para Staging
+  api-gateway-staging:
+    image: rsv360-ecosystem:latest
+    container_name: rsv-api-gateway-staging
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=staging
+      - PORT=8080
+      - SERVICE_NAME=RSV360-API-Gateway-Staging
+      - LOG_LEVEL=debug
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring Service para Staging
+  monitoring-staging:
+    image: rsv360-ecosystem:latest
+    container_name: rsv-monitoring-staging
+    ports:
+      - "5007:5007"
+    environment:
+      - NODE_ENV=staging
+      - PORT=5007
+      - SERVICE_NAME=RSV360-Monitoring-Staging
+      - LOG_LEVEL=debug
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Performance Service para Staging
+  performance-staging:
+    image: rsv360-ecosystem:latest
+    container_name: rsv-performance-staging
+    ports:
+      - "5008:5008"
+    environment:
+      - NODE_ENV=staging
+      - PORT=5008
+      - SERVICE_NAME=RSV360-Performance-Staging
+      - LOG_LEVEL=debug
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database para Staging
+  db-staging:
+    image: postgres:15.4
+    container_name: rsv-db-staging
+    environment:
+      - POSTGRES_DB=rsv360_staging
+      - POSTGRES_USER=rsvuser
+      - POSTGRES_PASSWORD=rsvpassword
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rsvuser -d rsv360_staging"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis para Staging
+  redis-staging:
+    image: redis:7.2.3
+    container_name: rsv-redis-staging
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_staging_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+
+networks:
+  default:
+    name: rsv360-staging-network

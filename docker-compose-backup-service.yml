@@ -1,0 +1,73 @@
+﻿version: '3.8'
+
+services:
+  backup-service:
+    image: postgres:15.4
+    container_name: rsv-backup-service
+    environment:
+      - NODE_ENV=production
+      - SERVICE_NAME=RSV360-Backup-Service
+    volumes:
+      - ./scripts:/scripts
+      - ./backups:/backups
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      sh -c "
+        apk add --no-cache curl docker-cli &&
+        echo '#!/bin/bash
+        set -e
+        
+        BACKUP_DIR=\"/backups\"
+        DATE=\$(date +%Y%m%d_%H%M%S)
+        RETENTION_DAYS=30
+        
+        log() {
+            echo \"[\$(date \"+%Y-%m-%d %H:%M:%S\")] \$1\"
+        }
+        
+        backup_postgres() {
+            log \"Iniciando backup do PostgreSQL...\"
+            pg_dump -h rsv-db-production -p 5432 -U rsvuser -d rsv360_production \\
+                --format=custom --compress=9 \\
+                --file=\"\$BACKUP_DIR/postgres_rsv360_\$DATE.dump\"
+            log \"Backup do PostgreSQL concluído\"
+        }
+        
+        backup_redis() {
+            log \"Iniciando backup do Redis...\"
+            redis-cli -h rsv-redis-production -p 6379 BGSAVE
+            sleep 5
+            docker cp rsv-redis-production:/data/dump.rdb \"\$BACKUP_DIR/redis_rsv360_\$DATE.rdb\"
+            log \"Backup do Redis concluído\"
+        }
+        
+        cleanup_old_backups() {
+            log \"Limpando backups antigos...\"
+            find \$BACKUP_DIR -name \"*.dump\" -mtime +\$RETENTION_DAYS -delete
+            find \$BACKUP_DIR -name \"*.rdb\" -mtime +\$RETENTION_DAYS -delete
+            log \"Limpeza concluída\"
+        }
+        
+        main() {
+            log \"=== INICIANDO BACKUP AUTOMÁTICO ===\"
+            backup_postgres
+            backup_redis
+            cleanup_old_backups
+            log \"=== BACKUP CONCLUÍDO ===\"
+        }
+        
+        main \"\$@\"
+        ' > /scripts/backup.sh &&
+        chmod +x /scripts/backup.sh &&
+        echo 'Backup service ready. Run: /scripts/backup.sh'
+        
+        # Executar backup a cada 6 horas
+        while true; do
+          /scripts/backup.sh
+          sleep 21600  # 6 horas
+        done
+      "
+    restart: unless-stopped
+    depends_on:
+      - db-production
+      - redis-production

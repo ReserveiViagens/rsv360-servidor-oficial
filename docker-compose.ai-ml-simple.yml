@@ -1,0 +1,337 @@
+services:
+  # ML Optimization Service - Versão Simplificada
+  ml-optimization-service:
+    image: node:18-alpine
+    container_name: rsv-ml-optimization-service
+    ports:
+      - '6001:6001'
+    environment:
+      - NODE_ENV=production
+      - PORT=6001
+      - SERVICE_NAME=RSV360-ML-Optimization-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 ML Optimization Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6001}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/models\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({models: [\"optimization_model\", \"performance_model\"], total_models: 2}));
+        } else if (req.url === \"/api/v1/optimize\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"test-service\",
+            best_params: {cpu_limit: \"0.5\", memory_limit: \"512Mi\"},
+            performance_improvement: 0.15,
+            confidence_score: 0.85,
+            recommendations: [\"Ajustar CPU limit\", \"Otimizar cache\"]
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"ML Optimization Service is running\");
+        }
+      }).listen(6001);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:6001/health || exit 1']
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+
+  # Failure Prediction Service - Versão Simplificada
+  failure-prediction-service:
+    image: node:18-alpine
+    container_name: rsv-failure-prediction-service
+    ports:
+      - '6002:6002'
+    environment:
+      - NODE_ENV=production
+      - PORT=6002
+      - SERVICE_NAME=RSV360-Failure-Prediction-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 Failure Prediction Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6002}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/predict-failure\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"test-service\",
+            failure_probability: 0.25,
+            predicted_failure_time: null,
+            risk_level: \"LOW\",
+            contributing_factors: [\"Normal operation\"],
+            recommendations: [\"Continue monitoring\"],
+            confidence: 0.85
+          }));
+        } else if (req.url === \"/api/v1/detect-anomaly\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"test-service\",
+            anomaly_score: 0.1,
+            is_anomaly: false,
+            anomaly_type: \"NORMAL\",
+            severity: \"LOW\",
+            timestamp: new Date().toISOString()
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"Failure Prediction Service is running\");
+        }
+      }).listen(6002);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6002/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # AI Chatbot Service - Versão Simplificada
+  ai-chatbot-service:
+    image: node:18-alpine
+    container_name: rsv-ai-chatbot-service
+    ports:
+      - '6005:6005'
+    environment:
+      - NODE_ENV=production
+      - PORT=6005
+      - SERVICE_NAME=RSV360-AI-Chatbot-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 AI Chatbot Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6005}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/chat\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            response: \"Olá! Sou o assistente IA do RSV360. Como posso ajudar?\",
+            session_id: \"test-session\",
+            timestamp: new Date().toISOString(),
+            suggestions: [\"Ver status do sistema\", \"Analisar performance\", \"Verificar logs\"],
+            confidence: 0.9,
+            action_required: false
+          }));
+        } else if (req.url === \"/api/v1/system-status\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"RSV360 Ecosystem\",
+            status: \"operational\",
+            metrics: {api_gateway: {status: \"healthy\", cpu: 45, memory: 60}},
+            issues: [],
+            recommendations: [\"System is running optimally\"]
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"AI Chatbot Service is running\");
+        }
+      }).listen(6005);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6005/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Auto-Tuning Service - Versão Simplificada
+  auto-tuning-service:
+    image: node:18-alpine
+    container_name: rsv-auto-tuning-service
+    ports:
+      - '6003:6003'
+    environment:
+      - NODE_ENV=production
+      - PORT=6003
+      - SERVICE_NAME=RSV360-Auto-Tuning-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 Auto-Tuning Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6003}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/auto-tune\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"test-service\",
+            tuned_parameters: {cpu_limit: \"0.8\", memory_limit: \"1Gi\", replicas: 3},
+            performance_gain: 0.2,
+            confidence: 0.88
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"Auto-Tuning Service is running\");
+        }
+      }).listen(6003);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6003/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Performance Analytics Service - Versão Simplificada
+  performance-analytics-service:
+    image: node:18-alpine
+    container_name: rsv-performance-analytics-service
+    ports:
+      - '6004:6004'
+    environment:
+      - NODE_ENV=production
+      - PORT=6004
+      - SERVICE_NAME=RSV360-Performance-Analytics-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 Performance Analytics Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6004}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/analytics\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"test-service\",
+            performance_metrics: {throughput: 1000, latency: 200, error_rate: 0.02},
+            trends: {throughput_trend: \"stable\", latency_trend: \"improving\"},
+            predictions: {next_hour_throughput: 1050, next_hour_latency: 180}
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"Performance Analytics Service is running\");
+        }
+      }).listen(6004);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6004/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Anomaly Detection Service - Versão Simplificada
+  anomaly-detection-service:
+    image: node:18-alpine
+    container_name: rsv-anomaly-detection-service
+    ports:
+      - '6006:6006'
+    environment:
+      - NODE_ENV=production
+      - PORT=6006
+      - SERVICE_NAME=RSV360-Anomaly-Detection-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 Anomaly Detection Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6006}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/detect\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            service_name: \"test-service\",
+            anomaly_detected: false,
+            anomaly_score: 0.15,
+            anomaly_type: \"NORMAL\",
+            severity: \"LOW\",
+            timestamp: new Date().toISOString()
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"Anomaly Detection Service is running\");
+        }
+      }).listen(6006);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6006/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ML Training Service - Versão Simplificada
+  ml-training-service:
+    image: node:18-alpine
+    container_name: rsv-ml-training-service
+    ports:
+      - '6007:6007'
+    environment:
+      - NODE_ENV=production
+      - PORT=6007
+      - SERVICE_NAME=RSV360-ML-Training-Service
+      - LOG_LEVEL=info
+    command: >
+      sh -c "
+      mkdir -p /app &&
+      echo '{\"status\":\"healthy\",\"service\":\"RSV360 ML Training Service\",\"timestamp\":\"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'\",\"port\":6007}' > /app/health.json &&
+      node -e '
+      require(\"http\").createServer((req, res) => {
+        if (req.url === \"/health\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          require(\"fs\").createReadStream(\"/app/health.json\").pipe(res);
+        } else if (req.url === \"/api/v1/train\") {
+          res.writeHead(200, {\"Content-Type\": \"application/json\"});
+          res.end(JSON.stringify({
+            model_name: \"optimization_model\",
+            training_status: \"completed\",
+            accuracy: 0.92,
+            training_time: \"5 minutes\",
+            model_version: \"v1.2.0\"
+          }));
+        } else {
+          res.writeHead(200);
+          res.end(\"ML Training Service is running\");
+        }
+      }).listen(6007);
+      '
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6007/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+networks:
+  default:
+    name: rsv360-ai-ml-network
+    driver: bridge

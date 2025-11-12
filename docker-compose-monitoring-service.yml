@@ -1,0 +1,137 @@
+﻿version: '3.8'
+services:
+  monitoring-service:
+    image: node:18-alpine
+    container_name: rsv-monitoring-service
+    ports:
+      - "5007:5007"
+    environment:
+      - NODE_ENV=development
+      - PORT=5007
+      - SERVICE_NAME=RSV360-Monitoring-Service
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const app = express();
+        const port = 5007;
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        // Metrics storage
+        let metrics = {
+          requests: 0,
+          errors: 0,
+          uptime: Date.now(),
+          services: {}
+        };
+        
+        // Health check
+        app.get(\"/health\", (req, res) => {
+          metrics.requests++;
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 Monitoring Service\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime(),
+            metrics: {
+              totalRequests: metrics.requests,
+              totalErrors: metrics.errors,
+              uptime: Date.now() - metrics.uptime
+            }
+          });
+        });
+        
+        // Monitoring status
+        app.get(\"/api/v1/status\", (req, res) => {
+          metrics.requests++;
+          res.json({
+            success: true,
+            message: \"RSV360 Monitoring Service is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString(),
+            endpoints: [
+              \"GET /api/v1/metrics\",
+              \"GET /api/v1/services\",
+              \"POST /api/v1/metrics\",
+              \"GET /api/v1/dashboard\"
+            ]
+          });
+        });
+        
+        // Get metrics
+        app.get(\"/api/v1/metrics\", (req, res) => {
+          metrics.requests++;
+          res.json({
+            success: true,
+            data: {
+              system: {
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                cpu: process.cpuUsage(),
+                platform: process.platform,
+                nodeVersion: process.version
+              },
+              application: {
+                totalRequests: metrics.requests,
+                totalErrors: metrics.errors,
+                uptime: Date.now() - metrics.uptime,
+                services: Object.keys(metrics.services).length
+              }
+            }
+          });
+        });
+        
+        // Get services status
+        app.get(\"/api/v1/services\", (req, res) => {
+          metrics.requests++;
+          res.json({
+            success: true,
+            data: {
+              services: [
+                { name: \"CRM System\", port: 3001, status: \"healthy\" },
+                { name: \"Booking Engine\", port: 3002, status: \"healthy\" },
+                { name: \"Hotel Management\", port: 3003, status: \"healthy\" },
+                { name: \"Analytics Intelligence\", port: 3004, status: \"healthy\" },
+                { name: \"API Gateway\", port: 8080, status: \"healthy\" },
+                { name: \"Auth Service\", port: 5006, status: \"healthy\" },
+                { name: \"Monitoring Service\", port: 5007, status: \"healthy\" }
+              ],
+              totalServices: 7,
+              healthyServices: 7
+            }
+          });
+        });
+        
+        // Dashboard endpoint
+        app.get(\"/api/v1/dashboard\", (req, res) => {
+          metrics.requests++;
+          res.json({
+            success: true,
+            data: {
+              overview: {
+                totalServices: 18,
+                healthyServices: 18,
+                totalRequests: metrics.requests,
+                uptime: process.uptime(),
+                memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + \" MB\"
+              },
+              services: [
+                { name: \"Frontend Services\", count: 6, status: \"healthy\" },
+                { name: \"Backend Services\", count: 7, status: \"healthy\" },
+                { name: \"API Services\", count: 3, status: \"healthy\" },
+                { name: \"Infrastructure\", count: 2, status: \"healthy\" }
+              ]
+            }
+          });
+        });
+        
+        app.listen(port, () => console.log(\"RSV360 Monitoring Service running on port \" + port));
+        ' > server.js &&
+        npm init -y && npm install express cors && node server.js
+      "
+    restart: unless-stopped

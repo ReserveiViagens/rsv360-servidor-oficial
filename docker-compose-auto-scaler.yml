@@ -1,0 +1,194 @@
+﻿version: '3.8'
+services:
+  auto-scaler:
+    image: node:18-alpine
+    container_name: rsv-auto-scaler
+    ports:
+      - "5010:5010"
+    environment:
+      - NODE_ENV=production
+      - PORT=5010
+      - SERVICE_NAME=RSV360-Auto-Scaler
+      - MIN_REPLICAS=1
+      - MAX_REPLICAS=10
+      - CPU_THRESHOLD=70
+      - MEMORY_THRESHOLD=80
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      sh -c "
+        apk add --no-cache curl docker-cli &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const { exec } = require(\"child_process\");
+        const app = express();
+        const port = 5010;
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        // Configurações de auto-scaling
+        const config = {
+          minReplicas: parseInt(process.env.MIN_REPLICAS) || 1,
+          maxReplicas: parseInt(process.env.MAX_REPLICAS) || 10,
+          cpuThreshold: parseInt(process.env.CPU_THRESHOLD) || 70,
+          memoryThreshold: parseInt(process.env.MEMORY_THRESHOLD) || 80,
+          checkInterval: 30000 // 30 segundos
+        };
+        
+        // Health check
+        app.get(\"/health\", (req, res) => {
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 Auto-Scaler\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime(),
+            config: config
+          });
+        });
+        
+        // Auto-scaler status
+        app.get(\"/api/v1/status\", (req, res) => {
+          res.json({
+            success: true,
+            message: \"RSV360 Auto-Scaler is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString(),
+            config: config,
+            endpoints: [
+              \"GET /api/v1/metrics\",
+              \"GET /api/v1/scaling-status\",
+              \"POST /api/v1/scale\",
+              \"GET /api/v1/recommendations\"
+            ]
+          });
+        });
+        
+        // Obter métricas do sistema
+        app.get(\"/api/v1/metrics\", (req, res) => {
+          exec(\"docker stats --no-stream --format \\\"table {{.Container}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.MemPerc}}\\\"\", (error, stdout, stderr) => {
+            if (error) {
+              res.status(500).json({
+                success: false,
+                message: \"Failed to get metrics\",
+                error: error.message
+              });
+              return;
+            }
+            
+            const lines = stdout.trim().split(\"\\n\").slice(1);
+            const metrics = lines.map(line => {
+              const parts = line.split(\"\\t\");
+              return {
+                container: parts[0],
+                cpuPercent: parseFloat(parts[1].replace(\"%\", \"\")),
+                memoryUsage: parts[2],
+                memoryPercent: parseFloat(parts[3].replace(\"%\", \"\"))
+              };
+            });
+            
+            res.json({
+              success: true,
+              data: {
+                metrics: metrics,
+                timestamp: new Date().toISOString()
+              }
+            });
+          });
+        });
+        
+        // Status do scaling
+        app.get(\"/api/v1/scaling-status\", (req, res) => {
+          exec(\"docker ps --format \\\"{{.Names}}\\t{{.Status}}\\\"\", (error, stdout, stderr) => {
+            if (error) {
+              res.status(500).json({
+                success: false,
+                message: \"Failed to get scaling status\",
+                error: error.message
+              });
+              return;
+            }
+            
+            const containers = stdout.trim().split(\"\\n\").map(line => {
+              const parts = line.split(\"\\t\");
+              return {
+                name: parts[0],
+                status: parts[1]
+              };
+            });
+            
+            const rsvContainers = containers.filter(c => c.name.includes(\"rsv-\"));
+            
+            res.json({
+              success: true,
+              data: {
+                totalContainers: containers.length,
+                rsvContainers: rsvContainers.length,
+                containers: rsvContainers,
+                scalingRecommendation: rsvContainers.length < config.minReplicas ? \"scale-up\" : 
+                                      rsvContainers.length > config.maxReplicas ? \"scale-down\" : \"maintain\",
+                timestamp: new Date().toISOString()
+              }
+            });
+          });
+        });
+        
+        // Recomendações de scaling
+        app.get(\"/api/v1/recommendations\", (req, res) => {
+          res.json({
+            success: true,
+            data: {
+              recommendations: [
+                {
+                  type: \"cpu-scaling\",
+                  description: \"Scale up when CPU usage exceeds 70%\",
+                  threshold: config.cpuThreshold,
+                  action: \"scale-up\"
+                },
+                {
+                  type: \"memory-scaling\",
+                  description: \"Scale up when memory usage exceeds 80%\",
+                  threshold: config.memoryThreshold,
+                  action: \"scale-up\"
+                },
+                {
+                  type: \"load-scaling\",
+                  description: \"Scale based on request load\",
+                  threshold: \"1000 requests/min\",
+                  action: \"scale-up\"
+                }
+              ],
+              currentConfig: config,
+              timestamp: new Date().toISOString()
+            }
+          });
+        });
+        
+        // Função de auto-scaling
+        function performAutoScaling() {
+          exec(\"docker ps --format \\\"{{.Names}}\\\"\", (error, stdout, stderr) => {
+            if (error) return;
+            
+            const containers = stdout.trim().split(\"\\n\");
+            const rsvContainers = containers.filter(name => name.includes(\"rsv-\"));
+            
+            console.log(Auto-scaling check:  RSV containers running);
+            
+            // Aqui seria implementada a lógica real de auto-scaling
+            // Por exemplo, verificar métricas e escalar conforme necessário
+          });
+        }
+        
+        // Executar auto-scaling a cada 30 segundos
+        setInterval(performAutoScaling, config.checkInterval);
+        
+        app.listen(port, () => {
+          console.log(\"RSV360 Auto-Scaler running on port \" + port);
+          console.log(\"Auto-scaling configuration:\", config);
+        });
+        ' > server.js &&
+        npm init -y && npm install express cors && node server.js
+      "
+    restart: unless-stopped

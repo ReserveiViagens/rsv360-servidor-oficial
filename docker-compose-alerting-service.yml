@@ -1,0 +1,183 @@
+﻿version: '3.8'
+services:
+  alerting-service:
+    image: node:18-alpine
+    container_name: rsv-alerting-service
+    ports:
+      - "5009:5009"
+    environment:
+      - NODE_ENV=production
+      - PORT=5009
+      - SERVICE_NAME=RSV360-Alerting-Service
+      - SLACK_WEBHOOK_URL=
+      - EMAIL_SMTP_HOST=
+      - EMAIL_SMTP_PORT=
+      - EMAIL_USER=
+      - EMAIL_PASS=
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const nodemailer = require(\"nodemailer\");
+        const app = express();
+        const port = 5009;
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        // Configuração de email
+        const transporter = nodemailer.createTransporter({
+          host: process.env.EMAIL_SMTP_HOST || \"smtp.gmail.com\",
+          port: process.env.EMAIL_SMTP_PORT || 587,
+          secure: false,
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          }
+        });
+        
+        // Health check
+        app.get(\"/health\", (req, res) => {
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 Alerting Service\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime()
+          });
+        });
+        
+        // Alerting status
+        app.get(\"/api/v1/status\", (req, res) => {
+          res.json({
+            success: true,
+            message: \"RSV360 Alerting Service is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString(),
+            endpoints: [
+              \"POST /api/v1/alerts\",
+              \"GET /api/v1/alerts\",
+              \"POST /api/v1/notifications\",
+              \"GET /api/v1/notifications\"
+            ]
+          });
+        });
+        
+        // Enviar alerta
+        app.post(\"/api/v1/alerts\", async (req, res) => {
+          try {
+            const { level, message, service, timestamp } = req.body;
+            
+            const alert = {
+              id: Date.now(),
+              level: level || \"info\",
+              message: message || \"Alert triggered\",
+              service: service || \"unknown\",
+              timestamp: timestamp || new Date().toISOString(),
+              status: \"active\"
+            };
+            
+            // Enviar notificação por email
+            if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+              await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: \"admin@rsv360.com\",
+                subject: [RSV360]  - ,
+                text: alert.message,
+                html: 
+                  <h2>RSV360 Alert</h2>
+                  <p><strong>Level:</strong> </p>
+                  <p><strong>Service:</strong> </p>
+                  <p><strong>Message:</strong> </p>
+                  <p><strong>Timestamp:</strong> </p>
+                
+              });
+            }
+            
+            res.json({
+              success: true,
+              message: \"Alert sent successfully\",
+              data: alert
+            });
+          } catch (error) {
+            res.status(500).json({
+              success: false,
+              message: \"Failed to send alert\",
+              error: error.message
+            });
+          }
+        });
+        
+        // Listar alertas
+        app.get(\"/api/v1/alerts\", (req, res) => {
+          res.json({
+            success: true,
+            data: {
+              alerts: [
+                {
+                  id: 1,
+                  level: \"info\",
+                  message: \"System started successfully\",
+                  service: \"alerting-service\",
+                  timestamp: new Date().toISOString(),
+                  status: \"resolved\"
+                }
+              ],
+              total: 1
+            }
+          });
+        });
+        
+        // Enviar notificação
+        app.post(\"/api/v1/notifications\", async (req, res) => {
+          try {
+            const { type, message, recipients } = req.body;
+            
+            const notification = {
+              id: Date.now(),
+              type: type || \"info\",
+              message: message || \"Notification\",
+              recipients: recipients || [\"admin@rsv360.com\"],
+              timestamp: new Date().toISOString(),
+              status: \"sent\"
+            };
+            
+            // Enviar notificação por email
+            if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+              for (const recipient of notification.recipients) {
+                await transporter.sendMail({
+                  from: process.env.EMAIL_USER,
+                  to: recipient,
+                  subject: [RSV360]  Notification,
+                  text: notification.message,
+                  html: 
+                    <h2>RSV360 Notification</h2>
+                    <p><strong>Type:</strong> </p>
+                    <p><strong>Message:</strong> </p>
+                    <p><strong>Timestamp:</strong> </p>
+                  
+                });
+              }
+            }
+            
+            res.json({
+              success: true,
+              message: \"Notification sent successfully\",
+              data: notification
+            });
+          } catch (error) {
+            res.status(500).json({
+              success: false,
+              message: \"Failed to send notification\",
+              error: error.message
+            });
+          }
+        });
+        
+        app.listen(port, () => console.log(\"RSV360 Alerting Service running on port \" + port));
+        ' > server.js &&
+        npm init -y && npm install express cors nodemailer && node server.js
+      "
+    restart: unless-stopped

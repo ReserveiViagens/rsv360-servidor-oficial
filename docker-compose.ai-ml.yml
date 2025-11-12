@@ -1,0 +1,251 @@
+services:
+  # Redis Master - Dependência para IA/ML
+  redis-master:
+    image: redis:7.2.3-alpine
+    container_name: rsv-redis-master-ai
+    ports:
+      - '6380:6379'
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_ai_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ML Optimization Service - Otimização Automática
+  ml-optimization-service:
+    image: python:3.11-slim
+    container_name: rsv-ml-optimization-service
+    ports:
+      - '6001:6001'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-ML-Optimization-Service
+      - REDIS_URL=redis://redis-master:6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/ml-optimization:/app
+      - ml_models_data:/app/models
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6001
+      "
+    depends_on:
+      - redis-master
+      - prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Failure Prediction Service - Predição de Falhas
+  failure-prediction-service:
+    image: python:3.11-slim
+    container_name: rsv-failure-prediction-service
+    ports:
+      - '6002:6002'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-Failure-Prediction-Service
+      - REDIS_URL=redis://redis-master:6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/failure-prediction:/app
+      - ml_models_data:/app/models
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6002
+      "
+    depends_on:
+      - redis-master
+      - prometheus
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6002/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Auto-Tuning Service - Auto-Ajuste de Parâmetros
+  auto-tuning-service:
+    image: python:3.11-slim
+    container_name: rsv-auto-tuning-service
+    ports:
+      - '6003:6003'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-Auto-Tuning-Service
+      - REDIS_URL=redis://redis-master:6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/auto-tuning:/app
+      - ml_models_data:/app/models
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6003
+      "
+    depends_on:
+      - redis-master
+      - prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6003/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Performance Analytics Service - Análise Preditiva
+  performance-analytics-service:
+    image: python:3.11-slim
+    container_name: rsv-performance-analytics-service
+    ports:
+      - '6004:6004'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-Performance-Analytics-Service
+      - REDIS_URL=redis://redis-master:6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/performance-analytics:/app
+      - ml_models_data:/app/models
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6004
+      "
+    depends_on:
+      - redis-master
+      - prometheus
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6004/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI Chatbot Service - Chatbot Inteligente
+  ai-chatbot-service:
+    image: python:3.11-slim
+    container_name: rsv-ai-chatbot-service
+    ports:
+      - '6005:6005'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-AI-Chatbot-Service
+      - REDIS_URL=redis://redis-master:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/ai-chatbot:/app
+      - ml_models_data:/app/models
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6005
+      "
+    depends_on:
+      - redis-master
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6005/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Anomaly Detection Service - Detecção de Anomalias
+  anomaly-detection-service:
+    image: python:3.11-slim
+    container_name: rsv-anomaly-detection-service
+    ports:
+      - '6006:6006'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-Anomaly-Detection-Service
+      - REDIS_URL=redis://redis-master:6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/anomaly-detection:/app
+      - ml_models_data:/app/models
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6006
+      "
+    depends_on:
+      - redis-master
+      - prometheus
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6006/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ML Model Training Service - Treinamento de Modelos
+  ml-training-service:
+    image: python:3.11-slim
+    container_name: rsv-ml-training-service
+    ports:
+      - '6007:6007'
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SERVICE_NAME=RSV360-ML-Training-Service
+      - REDIS_URL=redis://redis-master:6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    volumes:
+      - ./ai-ml/ml-training:/app
+      - ml_models_data:/app/models
+      - ml_training_data:/app/data
+    working_dir: /app
+    command: >
+      sh -c "
+      pip install -r requirements.txt &&
+      python -m uvicorn main:app --host 0.0.0.0 --port 6007
+      "
+    depends_on:
+      - redis-master
+      - prometheus
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6007/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ml_models_data:
+  ml_training_data:
+  redis_ai_data:
+
+networks:
+  default:
+    name: rsv360-ai-ml-network
+    driver: bridge

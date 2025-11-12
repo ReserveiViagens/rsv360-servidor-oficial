@@ -1,0 +1,115 @@
+﻿version: '3.8'
+services:
+  api-rest-5004:
+    image: node:18-alpine
+    container_name: rsv-api-rest-5004
+    ports:
+      - "5004:5004"
+    environment:
+      - NODE_ENV=development
+      - PORT=5004
+      - SERVICE_NAME=RSV360-API-REST-5004
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const app = express();
+        const port = 5004;
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        app.get(\"/health\", (req, res) => {
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 API REST 5004\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime()
+          });
+        });
+        
+        app.get(\"/api/v1/status\", (req, res) => {
+          res.json({
+            success: true,
+            message: \"RSV360 API REST 5004 is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString()
+          });
+        });
+        
+        app.get(\"/api/v1/data\", (req, res) => {
+          res.json({
+            success: true,
+            data: [
+              {id: 1, name: \"API Data 1\", value: \"Sample data from API 5004\"},
+              {id: 2, name: \"API Data 2\", value: \"Another sample from API 5004\"}
+            ],
+            count: 2
+          });
+        });
+        
+        app.listen(port, () => console.log(\"RSV360 API REST 5004 running on port \" + port));
+        ' > server.js &&
+        npm init -y && npm install express cors && node server.js
+      "
+    restart: unless-stopped
+
+  api-rest-5005:
+    image: node:18-alpine
+    container_name: rsv-api-rest-5005
+    ports:
+      - "5005:5005"
+    environment:
+      - NODE_ENV=development
+      - PORT=5005
+      - SERVICE_NAME=RSV360-API-REST-5005
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const app = express();
+        const port = 5005;
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        app.get(\"/health\", (req, res) => {
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 API REST 5005\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime()
+          });
+        });
+        
+        app.get(\"/api/v1/status\", (req, res) => {
+          res.json({
+            success: true,
+            message: \"RSV360 API REST 5005 is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString()
+          });
+        });
+        
+        app.get(\"/api/v1/data\", (req, res) => {
+          res.json({
+            success: true,
+            data: [
+              {id: 1, name: \"API Data 1\", value: \"Sample data from API 5005\"},
+              {id: 2, name: \"API Data 2\", value: \"Another sample from API 5005\"}
+            ],
+            count: 2
+          });
+        });
+        
+        app.listen(port, () => console.log(\"RSV360 API REST 5005 running on port \" + port));
+        ' > server.js &&
+        npm init -y && npm install express cors && node server.js
+      "
+    restart: unless-stopped

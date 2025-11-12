@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  admin-panel:
+    image: nginx:alpine
+    container_name: rsv-admin-panel
+    restart: unless-stopped
+    ports:
+      - '3003:80'
+    volumes:
+      - ./admin/index.html:/usr/share/nginx/html/index.html:ro
+      - ./admin/nginx.conf:/etc/nginx/nginx.conf:ro
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rsv360-network
+
+networks:
+  rsv360-network:
+    external: true

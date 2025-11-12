@@ -1,0 +1,94 @@
+﻿version: '3.8'
+services:
+  api-gateway:
+    image: node:18-alpine
+    container_name: rsv-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - SERVICE_NAME=RSV360-API-Gateway
+    command: >
+      sh -c "
+        apk add --no-cache curl &&
+        mkdir -p /app && cd /app &&
+        echo 'const express = require(\"express\");
+        const cors = require(\"cors\");
+        const { createProxyMiddleware } = require(\"http-proxy-middleware\");
+        const app = express();
+        const port = 8080;
+        
+        app.use(cors());
+        app.use(express.json());
+        
+        // Health check
+        app.get(\"/health\", (req, res) => {
+          res.json({
+            status: \"healthy\",
+            service: \"RSV360 API Gateway\",
+            timestamp: new Date().toISOString(),
+            port: port,
+            uptime: process.uptime()
+          });
+        });
+        
+        // Gateway status
+        app.get(\"/api/v1/status\", (req, res) => {
+          res.json({
+            success: true,
+            message: \"RSV360 API Gateway is running\",
+            version: \"1.0.0\",
+            timestamp: new Date().toISOString(),
+            services: {
+              \"crm-system\": \"http://localhost:3001\",
+              \"booking-engine\": \"http://localhost:3002\",
+              \"hotel-management\": \"http://localhost:3003\",
+              \"analytics-intelligence\": \"http://localhost:3004\",
+              \"api-rest-5004\": \"http://localhost:5004\",
+              \"api-rest-5005\": \"http://localhost:5005\"
+            }
+          });
+        });
+        
+        // Proxy para CRM System
+        app.use(\"/api/crm\", createProxyMiddleware({
+          target: \"http://host.docker.internal:3001\",
+          changeOrigin: true,
+          pathRewrite: {
+            \"^/api/crm\": \"\"
+          }
+        }));
+        
+        // Proxy para Booking Engine
+        app.use(\"/api/booking\", createProxyMiddleware({
+          target: \"http://host.docker.internal:3002\",
+          changeOrigin: true,
+          pathRewrite: {
+            \"^/api/booking\": \"\"
+          }
+        }));
+        
+        // Proxy para Hotel Management
+        app.use(\"/api/hotel\", createProxyMiddleware({
+          target: \"http://host.docker.internal:3003\",
+          changeOrigin: true,
+          pathRewrite: {
+            \"^/api/hotel\": \"\"
+          }
+        }));
+        
+        // Proxy para Analytics Intelligence
+        app.use(\"/api/analytics\", createProxyMiddleware({
+          target: \"http://host.docker.internal:3004\",
+          changeOrigin: true,
+          pathRewrite: {
+            \"^/api/analytics\": \"\"
+          }
+        }));
+        
+        app.listen(port, () => console.log(\"RSV360 API Gateway running on port \" + port));
+        ' > server.js &&
+        npm init -y && npm install express cors http-proxy-middleware && node server.js
+      "
+    restart: unless-stopped

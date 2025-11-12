@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  nginx-load-balancer:
+    image: nginx:alpine
+    container_name: rsv-nginx-load-balancer
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./load-balancer/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./load-balancer/ssl:/etc/nginx/ssl:ro
+      - ./load-balancer/logs:/var/log/nginx
+    depends_on:
+      - api-gateway-1
+      - api-gateway-2
+      - api-gateway-3
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rsv360-network
+
+  api-gateway-1:
+    image: nginx:alpine
+    container_name: rsv-api-gateway-1
+    restart: unless-stopped
+    ports:
+      - '5000:80'
+    volumes:
+      - ./load-balancer/gateway1.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rsv360-network
+
+  api-gateway-2:
+    image: nginx:alpine
+    container_name: rsv-api-gateway-2
+    restart: unless-stopped
+    ports:
+      - '5001:80'
+    volumes:
+      - ./load-balancer/gateway2.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rsv360-network
+
+  api-gateway-3:
+    image: nginx:alpine
+    container_name: rsv-api-gateway-3
+    restart: unless-stopped
+    ports:
+      - '5002:80'
+    volumes:
+      - ./load-balancer/gateway3.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rsv360-network
+
+  load-balancer-monitor:
+    image: nginx:alpine
+    container_name: rsv-load-balancer-monitor
+    restart: unless-stopped
+    ports:
+      - '8081:80'
+    volumes:
+      - ./load-balancer/monitor.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - rsv360-network
+
+networks:
+  rsv360-network:
+    external: true
