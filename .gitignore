@@ -94,3 +94,7 @@ dev-debug.log
 # tasks/
 
 /arquivos-grandes/
+
+# Ignorar arquivos grandes
+Hotel-com-melhor-preco-main/Pictures/
+*.zip
