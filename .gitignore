@@ -98,3 +98,19 @@ dev-debug.log
 # Ignorar arquivos grandes
 Hotel-com-melhor-preco-main/Pictures/
 *.zip
+# Editor
+.cursor/
+.cursorrules
+
+# Test results
+playwright-report/
+test-results/
+
+# Backups
+backups/
+frontend-backup-*/
+backup-git-*/
+
+# Temporários
+*.tmp
+health-last.txt
