@@ -29,6 +29,11 @@ const performanceRoutes = require("./routes/performance");
 const backupRoutes = require("./routes/backup");
 const trainingRoutes = require("./routes/training");
 
+// Import RSV360 routes
+const bookingsRsv360Routes = require("./routes/bookings-rsv360");
+const propertiesRsv360Routes = require("./routes/properties-rsv360");
+const paymentsRsv360Routes = require("./routes/payments-rsv360");
+
 // Import middleware
 const errorHandler = require("./middleware/errorHandler");
 const { authenticateToken } = require("./middleware/auth");
@@ -131,6 +136,27 @@ app.use("/api/performance", authenticateToken, performanceRoutes);
 app.use("/api/backup", authenticateToken, backupRoutes);
 app.use("/api/training", authenticateToken, trainingRoutes);
 
+// RSV360 Routes
+app.use("/api/rsv360/bookings", authenticateToken, bookingsRsv360Routes);
+app.use("/api/rsv360/properties", authenticateToken, propertiesRsv360Routes);
+app.use("/api/rsv360/payments", authenticateToken, paymentsRsv360Routes);
+
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({
+    message: "RSV 360 Backend API",
+    version: "1.0.0",
+    status: "running",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: "/health",
+      api: "/api",
+      admin: "/api/admin",
+      website: "/api/website",
+    },
+  });
+});
+
 // API base route
 app.get("/api", (req, res) => {
   res.json({
@@ -155,6 +181,11 @@ app.get("/api", (req, res) => {
       performance: "/api/performance",
       backup: "/api/backup",
       training: "/api/training",
+      rsv360: {
+        bookings: "/api/rsv360/bookings",
+        properties: "/api/rsv360/properties",
+        payments: "/api/rsv360/payments",
+      },
     },
   });
 });
