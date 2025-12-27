@@ -7,6 +7,9 @@ const nextConfig = {
   // Resolver aviso de lockfiles múltiplos
   outputFileTracingRoot: path.join(__dirname, '../../'),
   
+  // Configuração para produção (standalone output para Docker)
+  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+  
   // Ignorar diretórios problemáticos
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   
