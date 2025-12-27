@@ -1,0 +1,13 @@
+{
+  "name": "rsv360-guest-app",
+  "version": "1.0.0",
+  "description": "RSV 360 - Guest Web App (App para hóspedes)",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
+
