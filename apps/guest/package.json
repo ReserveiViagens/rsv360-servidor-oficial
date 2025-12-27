@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7"
   }
 }
-
